@@ -23,9 +23,27 @@ class FormatBParser(BaseParser):
     def detect_page(self, page_text: str) -> bool:
         return bool(re.search(r'T[eé]l\.\s*(?:bu|pr)\.', page_text))
 
+    # -- Nettoyage OCR du bruit résiduel en fin de ligne-nom ---------------
+    _OCR_TRAILING_RE = re.compile(
+        r'\s+(?:'
+        r'\d+[a-zA-Z]?'          # "7i", "3x", "5"
+        r'|[a-z]{1,2}'           # "fi", "fe"
+        r'|[/\\^<>©®•✎🌐]+'     # symboles orphelins
+        r')\s*$'
+    )
+
+    def _clean_for_name(self, text: str) -> str:
+        """Nettoyage supplémentaire pour la détection de noms.
+
+        Supprime le bruit OCR résiduel en fin de ligne qui perturbe
+        la séparation NOM/Prénom (ex: «AGUIRRE Mikel 7i» → «AGUIRRE Mikel»).
+        """
+        text = self._OCR_TRAILING_RE.sub('', text)
+        return text.strip()
+
     def _is_name(self, line: str) -> bool:
         """Détecte une ligne-nom format B (NOM Prénom), avec heuristique renforcée."""
-        cleaned = clean_ocr_icons(line)
+        cleaned = self._clean_for_name(clean_ocr_icons(line))
         if not cleaned or len(cleaned) < 4:
             return False
         if NAME_BLACKLIST_STARTS.match(cleaned):
@@ -83,6 +101,35 @@ class FormatBParser(BaseParser):
 
         return True
 
+    def _is_name_lenient(self, line: str) -> bool:
+        """Détection de nom souple, utilisée uniquement quand le contexte
+        confirme (ex: ligne suivante = numéro de carte de presse).
+
+        Moins stricte que _is_name : ne requiert qu'au moins un mot
+        uppercase ≥ 2 lettres, sans exiger la séparation NOM/Prénom
+        complète.  Le taux de faux positifs est acceptable car cette
+        méthode n'est appelée que lorsqu'un numéro de carte suit
+        immédiatement.
+        """
+        cleaned = self._clean_for_name(clean_ocr_icons(line))
+        if not cleaned or len(cleaned) < 3:
+            return False
+        if NAME_BLACKLIST_STARTS.match(cleaned):
+            return False
+        if CARTE_RE_AB.match(cleaned) or CP_VILLE_RE.match(cleaned):
+            return False
+        for _, pat in CONTACT_RES:
+            if pat.match(cleaned):
+                return False
+        words = cleaned.split()
+        if not words:
+            return False
+        return any(
+            len(re.sub(r'[^A-Za-zÉÈÊËÀÂÙÛÜÔÏÎ]', '', w)) >= 2
+            and re.sub(r'[^A-Za-zÉÈÊËÀÂÙÛÜÔÏÎ]', '', w).isupper()
+            for w in words
+        )
+
     def parse(self, lines: list[str], debug: bool = False) -> list[dict]:
         fiches, current, phase = [], None, 'waiting'
 
@@ -135,18 +182,26 @@ class FormatBParser(BaseParser):
 
             # Journal (après CP) — vérifié AVANT la détection de nom
             # pour éviter que "RTL-TVi" soit pris pour un nom,
-            # mais seulement si la ligne n'est pas elle-même un nom de journaliste
+            # mais seulement si la ligne n'est pas elle-même un nom de journaliste.
+            # Garde-fou : si la ligne suivante est un n° de carte, cette ligne
+            # est probablement un nom mal détecté, pas un journal.
             if phase == 'got_cp' and current and not self._is_name(line):
-                current['journal_ou_statut'] = clean_ocr_icons(line)
-                phase = 'got_journal'
-                i += 1
-                continue
+                next_is_carte = (
+                    i + 1 < len(line_list)
+                    and CARTE_RE_AB.match(clean_ocr_icons(line_list[i + 1]))
+                )
+                if not next_is_carte:
+                    current['journal_ou_statut'] = clean_ocr_icons(line)
+                    phase = 'got_journal'
+                    i += 1
+                    continue
+                # sinon : on laisse tomber dans le fallback nom+carte ci-dessous
 
             # Ligne-nom
             if self._is_name(line):
                 if current and current.get('nom'):
                     fiches.append(current)
-                name_clean = clean_ocr_icons(line)
+                name_clean = self._clean_for_name(clean_ocr_icons(line))
                 nom, prenom = split_nom_prenom(name_clean)
                 prenom = clean_prenom(prenom)
                 current = new_fiche(nom=nom, prenom=prenom)
@@ -205,6 +260,24 @@ class FormatBParser(BaseParser):
                     i += 2
                     continue
 
+            # Fallback : nom non détecté par _is_name() mais confirmé par
+            # la présence d'un n° de carte sur la ligne suivante.
+            # Utilise _is_name_lenient() qui tolère le bruit OCR résiduel.
+            if (i + 1 < len(line_list)
+                    and CARTE_RE_AB.match(clean_ocr_icons(line_list[i + 1]))
+                    and self._is_name_lenient(line)):
+                if current and current.get('nom'):
+                    fiches.append(current)
+                name_clean = self._clean_for_name(clean_ocr_icons(line))
+                nom, prenom = split_nom_prenom(name_clean)
+                prenom = clean_prenom(prenom)
+                current = new_fiche(nom=nom, prenom=prenom)
+                phase = 'got_name'
+                if debug:
+                    print(f"  [FALLBACK   ] nom récupéré: {nom} {prenom}")
+                i += 1
+                continue
+
             if not current:
                 i += 1
                 continue
@@ -213,6 +286,19 @@ class FormatBParser(BaseParser):
             if CARTE_RE_AB.match(line) and phase == 'got_name':
                 current['carte_presse'] = clean_carte(line)
                 phase = 'got_carte'
+                i += 1
+                continue
+
+            # Carte orpheline : n° de carte trouvé dans une phase inattendue.
+            # On sauvegarde la fiche courante et on démarre une nouvelle fiche
+            # partielle (sans nom) plutôt que de perdre toute l'entrée.
+            if CARTE_RE_AB.match(line) and phase not in ('got_name', 'waiting'):
+                if current and current.get('nom'):
+                    fiches.append(current)
+                current = new_fiche(carte_presse=clean_carte(line))
+                phase = 'got_carte'
+                if debug:
+                    print(f"  [ORPHAN CRT ] carte orpheline: {line}")
                 i += 1
                 continue
 
@@ -262,6 +348,6 @@ class FormatBParser(BaseParser):
 
             i += 1
 
-        if current and current.get('nom'):
+        if current and (current.get('nom') or current.get('carte_presse')):
             fiches.append(current)
         return fiches

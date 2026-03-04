@@ -59,5 +59,5 @@ def clean_carte(raw: str) -> str:
 
 def clean_prenom(prenom: str) -> str:
     """Supprime les artefacts OCR résiduels en fin de prénom."""
-    prenom = re.sub(r'\s+(?:\d|Ük|<\*©•|fe|[/\\^<>©®•✎🌐]+[\?]?)$', '', prenom)
+    prenom = re.sub(r'\s+(?:\d+[a-zA-Z]?|Ük|<\*©•|fe|fi|[/\\^<>©®•✎🌐]+[\?]?)$', '', prenom)
     return prenom.strip()
