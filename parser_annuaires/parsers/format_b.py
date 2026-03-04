@@ -134,8 +134,9 @@ class FormatBParser(BaseParser):
                 continue
 
             # Journal (après CP) — vérifié AVANT la détection de nom
-            # pour éviter que "RTL-TVi" soit pris pour un nom
-            if phase == 'got_cp' and current:
+            # pour éviter que "RTL-TVi" soit pris pour un nom,
+            # mais seulement si la ligne n'est pas elle-même un nom de journaliste
+            if phase == 'got_cp' and current and not self._is_name(line):
                 current['journal_ou_statut'] = clean_ocr_icons(line)
                 phase = 'got_journal'
                 i += 1
