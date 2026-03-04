@@ -12,19 +12,19 @@ pip install pdfplumber openpyxl
 
 ```bash
 # Auto-détection du format, export Excel
-python parser_annuaires_v2.py annuaire_2003.pdf -o fiches.xlsx
+python -m parser_annuaires annuaire_2003.pdf -o fiches.xlsx
 
 # Forcer un format, limiter les pages
-python parser_annuaires_v2.py annuaire_2000.pdf --format b --pages 155-390 -o fiches.xlsx
+python -m parser_annuaires annuaire_2000.pdf --format b --pages 155-390 -o fiches.xlsx
 
 # Plusieurs PDFs en une passe
-python parser_annuaires_v2.py annuaire_2001.pdf annuaire_2002.pdf -o fiches_2001-2002.xlsx
+python -m parser_annuaires annuaire_2001.pdf annuaire_2002.pdf -o fiches_2001-2002.xlsx
 
 # Vérifier sans écrire de fichier
-python parser_annuaires_v2.py annuaire_2003.pdf --dry-run
+python -m parser_annuaires annuaire_2003.pdf --dry-run
 
 # Afficher le parsing ligne par ligne (diagnostic)
-python parser_annuaires_v2.py annuaire_2003.pdf --debug
+python -m parser_annuaires annuaire_2003.pdf --debug
 ```
 
 ## Options
