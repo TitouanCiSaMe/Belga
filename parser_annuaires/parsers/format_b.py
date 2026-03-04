@@ -216,22 +216,49 @@ class FormatBParser(BaseParser):
                 i += 1
                 continue
 
-            # CP + Ville
-            m_cp = CP_VILLE_RE.match(line)
+            # CP + Ville (virgule OCR en tête tolérée; journal collé capturé)
+            line_for_cp = line.lstrip(',').strip()
+            m_cp = CP_VILLE_RE.match(line_for_cp)
             if m_cp and phase in ('got_carte', 'got_addr', 'got_name'):
                 current['code_postal'] = m_cp.group(1)
                 current['ville'] = m_cp.group(2).strip()
-                phase = 'got_cp'
+                rest = line_for_cp[m_cp.end():].strip().lstrip(',').strip()
+                if rest and not self._is_name(rest) and not CARTE_RE_AB.match(rest):
+                    current['journal_ou_statut'] = rest
+                    phase = 'got_journal'
+                else:
+                    phase = 'got_cp'
                 i += 1
                 continue
 
-            # Adresse
+            # Adresse (détection d'un CP+Ville embarqué sur la même ligne)
+            # Ex : "Boulevard Louis Schmidt 78, fi 1040 BRUXELLES, Basler Zeitung"
             if phase in ('got_carte', 'got_addr', 'got_name'):
-                if not current['adresse']:
-                    current['adresse'] = line
+                m_inline_cp = re.search(
+                    r'\b(\d{4,5})\s+([A-ZÉÈÊËÀÂÙÛÜÔÏÎ][A-ZÉÈÊËÀÂÙÛÜÔÏÎ\s\-\'/\.]*)(?:\s*,\s*(.+))?$',
+                    line,
+                )
+                if m_inline_cp and m_inline_cp.start() > 0:
+                    addr_part = line[:m_inline_cp.start()].rstrip(', \t')
+                    if addr_part:
+                        if not current['adresse']:
+                            current['adresse'] = addr_part
+                        else:
+                            current['adresse'] += ', ' + addr_part
+                    current['code_postal'] = m_inline_cp.group(1)
+                    current['ville'] = m_inline_cp.group(2).strip()
+                    journal_part = (m_inline_cp.group(3) or '').strip()
+                    if journal_part and not self._is_name(journal_part):
+                        current['journal_ou_statut'] = journal_part
+                        phase = 'got_journal'
+                    else:
+                        phase = 'got_cp'
                 else:
-                    current['adresse'] += ', ' + line
-                phase = 'got_addr'
+                    if not current['adresse']:
+                        current['adresse'] = line
+                    else:
+                        current['adresse'] += ', ' + line
+                    phase = 'got_addr'
 
             i += 1
 
