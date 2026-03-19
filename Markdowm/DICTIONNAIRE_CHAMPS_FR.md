@@ -297,7 +297,7 @@ Format : `AAAAMMJJTHHMMSS`
 
 ## 14. Horodatage session télex (optionnel)
 
-Présent uniquement dans les fichiers `.FRA`. Marque le moment de réception sur le terminal télex.
+Présent dans les fichiers `.FRA` et les monoblocs 1996. Marque le moment de réception sur le terminal télex.
 
 Format : `[JJ-MOIS-AA  HH:MM]`
 
@@ -305,7 +305,7 @@ Exemple : `[31-JUL-97  00:00]`
 
 ---
 
-## 15. Séparateur de dépêches (fichiers .FRA)
+## 15. Séparateur de dépêches (fichiers agrégés : .FRA et monoblocs 1996)
 
 Les dépêches sont séparées par la séquence :
 
@@ -314,22 +314,33 @@ Les dépêches sont séparées par la séquence :
 JJHHMM MOIS AA
 ```
 
-Chaque fichier quotidien contient ~250 dépêches.
+Chaque fichier quotidien contient ~250 dépêches. Le format est identique dans les
+`.FRA` et les monoblocs `FKBR[AAAAMMJJ].txt` de 1996.
 
 ---
 
 ## 16. Noms de fichiers
 
-| Extension | Format | Époque | Exemple |
-|-----------|--------|--------|---------|
-| `.FRA` | `JJMMAA.FRA` ou `JJMMAAA.FRA` | 1995–2002 | `310797.FRA`, `08042002.FRA` |
-| `.txt` | `FKBR[datetime]_[id].txt` | 2002–2019 | `FKBR200706150920_141.txt` |
-| `.xml` | `FKBR[datetime]_[id].xml` | 1994–2026 | `FKBR199406150000_10020940.xml` |
+| Type | Format du nom | Époque | Exemple |
+|------|---------------|--------|---------|
+| Agrégé quotidien | `JJMMAA.FRA` ou `JJMMAAA.FRA` | 1995–2002 | `310797.FRA`, `08042002.FRA` |
+| Monobloc quotidien | `FKBR[AAAAMMJJ].txt` | 1996 | `FKBR19960101.txt` |
+| Monobloc découpé | `FKBR[AAAAMMJJ][A-L].txt` | 1996 (mars–avril) | `FKBR19960328A.txt` |
+| Txt individuel | `FKBR[datetime]_[id].txt` | 2002–2019 | `FKBR200706150920_141.txt` |
+| XML individuel | `FKBR[datetime]_[id].xml` | 1994–2026 | `FKBR199406150000_10020940.xml` |
 
 Préfixe `F` = français. `KBR` = identifiant archive (Koninklijke Bibliotheek).
 
+> **Distinguer monobloc et individuel** : les fichiers txt individuels ont un
+> underscore `_` dans le nom, les monoblocs n'en ont pas.
+
+> **Monoblocs 1996** : même format interne que les `.FRA` (dépêches concaténées,
+> séparateurs `./.` + DTG). Sur la période 26 mars – 15 avril 1996, certains
+> monoblocs trop volumineux ont été découpés en parties alphabétiques (A–L).
+> Ces fichiers découpés coexistent avec les XML individuels dans les mêmes répertoires.
+
 > Les dépêches bilingues (`B`, `T`) peuvent se trouver dans des fichiers `FKBR`
-> ou `NKBR` indifféremment. Dans les `.FRA`, les bilingues sont incluses.
+> ou `NKBR` indifféremment. Dans les `.FRA` et monoblocs, les bilingues sont incluses.
 
 ---
 

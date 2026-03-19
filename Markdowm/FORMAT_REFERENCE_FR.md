@@ -15,28 +15,49 @@ agences de presse (AFP, Reuters, DPA, etc.) depuis les années 70.
 
 ---
 
-## Les 3 formats du corpus
+## Les 4 formats du corpus
 
 | Format | Années | Volume (FR) | Particularité |
 |--------|--------|-------------|---------------|
 | `.xml` (NewsML) | 1994–2026 | ~480k fichiers `FKBR*.xml` | 1 fichier = 1 dépêche, structuré |
-| `.txt` | 2002–2019 | ~800k fichiers `FKBR*.txt` | 1 fichier = 1 dépêche, en-tête IPTC 7901 |
+| `.txt` individuel | 2002–2019 | ~800k fichiers `FKBR*_*.txt` | 1 fichier = 1 dépêche, en-tête IPTC 7901 |
 | `.FRA` | 1995–2002 | ~1700 fichiers | 1 fichier = toutes les dépêches FR du jour, séparées par `./.` |
+| `.txt` monobloc | 1996 | 313 fichiers `FKBR[date].txt` | 1 fichier = toutes les dépêches FR du jour (même format que `.FRA`) |
 
 ### Chronologie des transitions
 
 | Période | Format principal | Notes |
 |---------|-----------------|-------|
-| 1994 | xml seul | |
+| 1994–1995 | xml seul | |
+| **1996** | **xml + monoblocs txt** | `FKBR19960101.txt` — même contenu que les `.FRA` mais nommage différent |
 | 1995–2001 | xml + `.FRA` en parallèle | Flux distincts (pas de doublons) |
 | 2002/01–04 | xml + derniers `.FRA` | Derniers FRA en avril 2002 |
-| 2002/06 | **Bascule vers .txt** | txt + quelques xml sporadiques |
-| 2003–2019/03 | .txt dominant | Quelques xml sporadiques certains mois |
+| 2002/06 | **Bascule vers .txt individuel** | txt + quelques xml sporadiques |
+| 2003–2019/03 | .txt individuel dominant | Quelques xml sporadiques certains mois |
 | 2019/04 | **Bascule vers xml** | |
 | 2019/04–2026 | xml seul | Format NewsML moderne |
 
 Les `.FRA` et `.xml` coexistent sans recouvrement : le fil télex (FRA) et
 les fichiers XML individuels sont des flux de distribution différents.
+
+### Monoblocs 1996 — cas particulier
+
+En 1996, les agrégés quotidiens utilisent le nommage `FKBR[AAAAMMJJ].txt` au lieu
+de `JJMMAA.FRA`. Le contenu est identique : horodatage télex, dépêches concaténées,
+séparateurs `./.` + DTG.
+
+Pour la période du **26 mars au 15 avril 1996**, certains monoblocs étaient trop
+volumineux et ont été découpés en parties avec un suffixe alphabétique :
+
+| Fichier | Parties | Taille partie A |
+|---------|---------|-----------------|
+| `FKBR19960328.txt` | A–K (11 parties) | ~1500 lignes |
+| `FKBR19960414.txt` | A–J (10 parties) | ~1500 lignes |
+| `FKBR19960329.txt` | A–J (10 parties) | ~1500 lignes |
+| etc. | jusqu'à L max | dernière partie souvent courte (~50 lignes) |
+
+Ces fichiers découpés coexistent avec les XML individuels (`FKBR199603280122_8110005.xml`,
+etc.) dans les mêmes répertoires — ce sont les mêmes dépêches sous deux formes.
 
 ---
 
@@ -329,16 +350,22 @@ Exemple : `20220211T045731` = 11 février 2022 à 04h57min31s.
 
 ## Noms de fichiers
 
-| Extension | Format | Époque | Exemple |
-|-----------|--------|--------|---------|
-| `.FRA` | `JJMMAA.FRA` ou `JJMMAAA.FRA` | 1995–2002 | `310797.FRA`, `08042002.FRA` |
-| `.txt` | `FKBR[datetime]_[id].txt` | 2002–2019 | `FKBR200706150920_141.txt` |
-| `.xml` | `FKBR[datetime]_[id].xml` | 1994–2026 | `FKBR199406150000_10020940.xml` |
+| Type | Format du nom | Époque | Exemple |
+|------|---------------|--------|---------|
+| Agrégé quotidien | `JJMMAA.FRA` ou `JJMMAAA.FRA` | 1995–2002 | `310797.FRA`, `08042002.FRA` |
+| Monobloc quotidien | `FKBR[AAAAMMJJ].txt` | 1996 | `FKBR19960101.txt` |
+| Monobloc découpé | `FKBR[AAAAMMJJ][A-L].txt` | 1996 (mars–avril) | `FKBR19960328A.txt` |
+| Txt individuel | `FKBR[datetime]_[id].txt` | 2002–2019 | `FKBR200706150920_141.txt` |
+| XML individuel | `FKBR[datetime]_[id].xml` | 1994–2026 | `FKBR199406150000_10020940.xml` |
 
 Préfixe `F` = français. `KBR` = identifiant archive (Koninklijke Bibliotheek).
 
+> **Distinguer monobloc et individuel** : les fichiers txt individuels ont un
+> underscore `_` dans le nom (`FKBR200706150920_141.txt`), les monoblocs n'en
+> ont pas (`FKBR19960101.txt`).
+
 > Les dépêches bilingues (`B`, `T`) peuvent se trouver dans des fichiers `FKBR`
-> ou `NKBR` indifféremment. Dans les `.FRA`, les bilingues sont incluses.
+> ou `NKBR` indifféremment. Dans les `.FRA` et monoblocs, les bilingues sont incluses.
 
 ---
 
